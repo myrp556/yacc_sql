@@ -1,0 +1,426 @@
+state 0 //
+
+    0 $accept: . QUERIES
+
+    SELECT  shift, and goto state 4
+
+    QUERIES           goto state 1
+    SELECT_STATEMENT  goto state 3
+    STATEMENT         goto state 2
+
+state 1 // SELECT NAME FROM NAME [$end]
+
+    0 $accept: QUERIES .  [$end]
+
+    $end  accept
+
+state 2 // SELECT NAME FROM NAME [$end]
+
+    1 QUERIES: STATEMENT .  [$end]
+    2 QUERIES: STATEMENT . SEMICOLON
+    3 QUERIES: STATEMENT . SEMICOLON QUERIES
+
+    $end       reduce using rule 1 (QUERIES)
+    SEMICOLON  shift, and goto state 40
+
+state 3 // SELECT NAME FROM NAME [$end]
+
+    4 STATEMENT: SELECT_STATEMENT .  [$end, SEMICOLON]
+
+    $end       reduce using rule 4 (STATEMENT)
+    SEMICOLON  reduce using rule 4 (STATEMENT)
+
+state 4 // SELECT
+
+    5 SELECT_STATEMENT: SELECT . FIELDS FROM SOURCES WHERE_CONDITION
+
+    NAME  shift, and goto state 7
+    STAR  shift, and goto state 8
+
+    FIELD   goto state 6
+    FIELDS  goto state 5
+
+state 5 // SELECT NAME [FROM]
+
+    5 SELECT_STATEMENT: SELECT FIELDS . FROM SOURCES WHERE_CONDITION
+
+    FROM  shift, and goto state 11
+
+state 6 // SELECT NAME [COMMA]
+
+    6 FIELDS: FIELD .  [FROM]
+    7 FIELDS: FIELD . COMMA FIELDS
+
+    COMMA  shift, and goto state 9
+    FROM   reduce using rule 6 (FIELDS)
+
+state 7 // SELECT NAME
+
+    8 FIELD: NAME .  [COMMA, FROM]
+
+    COMMA  reduce using rule 8 (FIELD)
+    FROM   reduce using rule 8 (FIELD)
+
+state 8 // SELECT STAR
+
+    9 FIELD: STAR .  [COMMA, FROM]
+
+    COMMA  reduce using rule 9 (FIELD)
+    FROM   reduce using rule 9 (FIELD)
+
+state 9 // SELECT NAME COMMA
+
+    7 FIELDS: FIELD COMMA . FIELDS
+
+    NAME  shift, and goto state 7
+    STAR  shift, and goto state 8
+
+    FIELD   goto state 6
+    FIELDS  goto state 10
+
+state 10 // SELECT NAME COMMA NAME [FROM]
+
+    7 FIELDS: FIELD COMMA FIELDS .  [FROM]
+
+    FROM  reduce using rule 7 (FIELDS)
+
+state 11 // SELECT NAME FROM
+
+    5 SELECT_STATEMENT: SELECT FIELDS FROM . SOURCES WHERE_CONDITION
+
+    NAME  shift, and goto state 14
+
+    SOURCE   goto state 13
+    SOURCES  goto state 12
+
+state 12 // SELECT NAME FROM NAME [$end]
+
+    5 SELECT_STATEMENT: SELECT FIELDS FROM SOURCES . WHERE_CONDITION
+   14 WHERE_CONDITION: .  [$end, SEMICOLON]
+
+    $end       reduce using rule 14 (WHERE_CONDITION)
+    SEMICOLON  reduce using rule 14 (WHERE_CONDITION)
+    WHERE      shift, and goto state 18
+
+    WHERE_CONDITION  goto state 17
+
+state 13 // SELECT NAME FROM NAME [$end]
+
+   10 SOURCES: SOURCE .  [$end, SEMICOLON, WHERE]
+   11 SOURCES: SOURCE . COMMA SOURCES
+
+    $end       reduce using rule 10 (SOURCES)
+    COMMA      shift, and goto state 15
+    SEMICOLON  reduce using rule 10 (SOURCES)
+    WHERE      reduce using rule 10 (SOURCES)
+
+state 14 // SELECT NAME FROM NAME
+
+   12 SOURCE: NAME .  [$end, COMMA, SEMICOLON, WHERE]
+
+    $end       reduce using rule 12 (SOURCE)
+    COMMA      reduce using rule 12 (SOURCE)
+    SEMICOLON  reduce using rule 12 (SOURCE)
+    WHERE      reduce using rule 12 (SOURCE)
+
+state 15 // SELECT NAME FROM NAME COMMA
+
+   11 SOURCES: SOURCE COMMA . SOURCES
+
+    NAME  shift, and goto state 14
+
+    SOURCE   goto state 13
+    SOURCES  goto state 16
+
+state 16 // SELECT NAME FROM NAME COMMA NAME [$end]
+
+   11 SOURCES: SOURCE COMMA SOURCES .  [$end, SEMICOLON, WHERE]
+
+    $end       reduce using rule 11 (SOURCES)
+    SEMICOLON  reduce using rule 11 (SOURCES)
+    WHERE      reduce using rule 11 (SOURCES)
+
+state 17 // SELECT NAME FROM NAME [$end]
+
+    5 SELECT_STATEMENT: SELECT FIELDS FROM SOURCES WHERE_CONDITION .  [$end, SEMICOLON]
+
+    $end       reduce using rule 5 (SELECT_STATEMENT)
+    SEMICOLON  reduce using rule 5 (SELECT_STATEMENT)
+
+state 18 // SELECT NAME FROM NAME WHERE
+
+   13 WHERE_CONDITION: WHERE . CONDITION
+
+    FLOAT    shift, and goto state 25
+    INTEGER  shift, and goto state 24
+    LEFTC    shift, and goto state 20
+    NAME     shift, and goto state 22
+    STRING   shift, and goto state 23
+
+    CONDITION      goto state 19
+    CONDITION_VAR  goto state 21
+
+state 19 // SELECT NAME FROM NAME WHERE FLOAT EQ FLOAT [$end]
+
+   13 WHERE_CONDITION: WHERE CONDITION .  [$end, SEMICOLON]
+   17 CONDITION: CONDITION . AND CONDITION  // assoc %left, prec 2
+   18 CONDITION: CONDITION . OR CONDITION  // assoc %left, prec 1
+
+    $end       reduce using rule 13 (WHERE_CONDITION)
+    AND        shift, and goto state 36
+    OR         shift, and goto state 37
+    SEMICOLON  reduce using rule 13 (WHERE_CONDITION)
+
+state 20 // SELECT NAME FROM NAME WHERE LEFTC
+
+   15 CONDITION: LEFTC . CONDITION RIGHTC
+
+    FLOAT    shift, and goto state 25
+    INTEGER  shift, and goto state 24
+    LEFTC    shift, and goto state 20
+    NAME     shift, and goto state 22
+    STRING   shift, and goto state 23
+
+    CONDITION      goto state 34
+    CONDITION_VAR  goto state 21
+
+state 21 // SELECT NAME FROM NAME WHERE FLOAT [EQ]
+
+   16 CONDITION: CONDITION_VAR . OPERATOR CONDITION_VAR
+
+    EQ   shift, and goto state 27
+    GT   shift, and goto state 31
+    GTE  shift, and goto state 32
+    LT   shift, and goto state 29
+    LTE  shift, and goto state 30
+    NEQ  shift, and goto state 28
+
+    OPERATOR  goto state 26
+
+state 22 // SELECT NAME FROM NAME WHERE NAME
+
+   25 CONDITION_VAR: NAME .  [$end, AND, EQ, GT, GTE, LT, LTE, NEQ, OR, RIGHTC, SEMICOLON]
+
+    $end       reduce using rule 25 (CONDITION_VAR)
+    AND        reduce using rule 25 (CONDITION_VAR)
+    EQ         reduce using rule 25 (CONDITION_VAR)
+    GT         reduce using rule 25 (CONDITION_VAR)
+    GTE        reduce using rule 25 (CONDITION_VAR)
+    LT         reduce using rule 25 (CONDITION_VAR)
+    LTE        reduce using rule 25 (CONDITION_VAR)
+    NEQ        reduce using rule 25 (CONDITION_VAR)
+    OR         reduce using rule 25 (CONDITION_VAR)
+    RIGHTC     reduce using rule 25 (CONDITION_VAR)
+    SEMICOLON  reduce using rule 25 (CONDITION_VAR)
+
+state 23 // SELECT NAME FROM NAME WHERE STRING
+
+   26 CONDITION_VAR: STRING .  [$end, AND, EQ, GT, GTE, LT, LTE, NEQ, OR, RIGHTC, SEMICOLON]
+
+    $end       reduce using rule 26 (CONDITION_VAR)
+    AND        reduce using rule 26 (CONDITION_VAR)
+    EQ         reduce using rule 26 (CONDITION_VAR)
+    GT         reduce using rule 26 (CONDITION_VAR)
+    GTE        reduce using rule 26 (CONDITION_VAR)
+    LT         reduce using rule 26 (CONDITION_VAR)
+    LTE        reduce using rule 26 (CONDITION_VAR)
+    NEQ        reduce using rule 26 (CONDITION_VAR)
+    OR         reduce using rule 26 (CONDITION_VAR)
+    RIGHTC     reduce using rule 26 (CONDITION_VAR)
+    SEMICOLON  reduce using rule 26 (CONDITION_VAR)
+
+state 24 // SELECT NAME FROM NAME WHERE INTEGER
+
+   27 CONDITION_VAR: INTEGER .  [$end, AND, EQ, GT, GTE, LT, LTE, NEQ, OR, RIGHTC, SEMICOLON]
+
+    $end       reduce using rule 27 (CONDITION_VAR)
+    AND        reduce using rule 27 (CONDITION_VAR)
+    EQ         reduce using rule 27 (CONDITION_VAR)
+    GT         reduce using rule 27 (CONDITION_VAR)
+    GTE        reduce using rule 27 (CONDITION_VAR)
+    LT         reduce using rule 27 (CONDITION_VAR)
+    LTE        reduce using rule 27 (CONDITION_VAR)
+    NEQ        reduce using rule 27 (CONDITION_VAR)
+    OR         reduce using rule 27 (CONDITION_VAR)
+    RIGHTC     reduce using rule 27 (CONDITION_VAR)
+    SEMICOLON  reduce using rule 27 (CONDITION_VAR)
+
+state 25 // SELECT NAME FROM NAME WHERE FLOAT
+
+   28 CONDITION_VAR: FLOAT .  [$end, AND, EQ, GT, GTE, LT, LTE, NEQ, OR, RIGHTC, SEMICOLON]
+
+    $end       reduce using rule 28 (CONDITION_VAR)
+    AND        reduce using rule 28 (CONDITION_VAR)
+    EQ         reduce using rule 28 (CONDITION_VAR)
+    GT         reduce using rule 28 (CONDITION_VAR)
+    GTE        reduce using rule 28 (CONDITION_VAR)
+    LT         reduce using rule 28 (CONDITION_VAR)
+    LTE        reduce using rule 28 (CONDITION_VAR)
+    NEQ        reduce using rule 28 (CONDITION_VAR)
+    OR         reduce using rule 28 (CONDITION_VAR)
+    RIGHTC     reduce using rule 28 (CONDITION_VAR)
+    SEMICOLON  reduce using rule 28 (CONDITION_VAR)
+
+state 26 // SELECT NAME FROM NAME WHERE FLOAT EQ [FLOAT]
+
+   16 CONDITION: CONDITION_VAR OPERATOR . CONDITION_VAR
+
+    FLOAT    shift, and goto state 25
+    INTEGER  shift, and goto state 24
+    NAME     shift, and goto state 22
+    STRING   shift, and goto state 23
+
+    CONDITION_VAR  goto state 33
+
+state 27 // SELECT NAME FROM NAME WHERE FLOAT EQ
+
+   19 OPERATOR: EQ .  [FLOAT, INTEGER, NAME, STRING]
+
+    FLOAT    reduce using rule 19 (OPERATOR)
+    INTEGER  reduce using rule 19 (OPERATOR)
+    NAME     reduce using rule 19 (OPERATOR)
+    STRING   reduce using rule 19 (OPERATOR)
+
+state 28 // SELECT NAME FROM NAME WHERE FLOAT NEQ
+
+   20 OPERATOR: NEQ .  [FLOAT, INTEGER, NAME, STRING]
+
+    FLOAT    reduce using rule 20 (OPERATOR)
+    INTEGER  reduce using rule 20 (OPERATOR)
+    NAME     reduce using rule 20 (OPERATOR)
+    STRING   reduce using rule 20 (OPERATOR)
+
+state 29 // SELECT NAME FROM NAME WHERE FLOAT LT
+
+   21 OPERATOR: LT .  [FLOAT, INTEGER, NAME, STRING]
+
+    FLOAT    reduce using rule 21 (OPERATOR)
+    INTEGER  reduce using rule 21 (OPERATOR)
+    NAME     reduce using rule 21 (OPERATOR)
+    STRING   reduce using rule 21 (OPERATOR)
+
+state 30 // SELECT NAME FROM NAME WHERE FLOAT LTE
+
+   22 OPERATOR: LTE .  [FLOAT, INTEGER, NAME, STRING]
+
+    FLOAT    reduce using rule 22 (OPERATOR)
+    INTEGER  reduce using rule 22 (OPERATOR)
+    NAME     reduce using rule 22 (OPERATOR)
+    STRING   reduce using rule 22 (OPERATOR)
+
+state 31 // SELECT NAME FROM NAME WHERE FLOAT GT
+
+   23 OPERATOR: GT .  [FLOAT, INTEGER, NAME, STRING]
+
+    FLOAT    reduce using rule 23 (OPERATOR)
+    INTEGER  reduce using rule 23 (OPERATOR)
+    NAME     reduce using rule 23 (OPERATOR)
+    STRING   reduce using rule 23 (OPERATOR)
+
+state 32 // SELECT NAME FROM NAME WHERE FLOAT GTE
+
+   24 OPERATOR: GTE .  [FLOAT, INTEGER, NAME, STRING]
+
+    FLOAT    reduce using rule 24 (OPERATOR)
+    INTEGER  reduce using rule 24 (OPERATOR)
+    NAME     reduce using rule 24 (OPERATOR)
+    STRING   reduce using rule 24 (OPERATOR)
+
+state 33 // SELECT NAME FROM NAME WHERE FLOAT EQ FLOAT [$end]
+
+   16 CONDITION: CONDITION_VAR OPERATOR CONDITION_VAR .  [$end, AND, OR, RIGHTC, SEMICOLON]
+
+    $end       reduce using rule 16 (CONDITION)
+    AND        reduce using rule 16 (CONDITION)
+    OR         reduce using rule 16 (CONDITION)
+    RIGHTC     reduce using rule 16 (CONDITION)
+    SEMICOLON  reduce using rule 16 (CONDITION)
+
+state 34 // SELECT NAME FROM NAME WHERE LEFTC FLOAT EQ FLOAT [AND]
+
+   15 CONDITION: LEFTC CONDITION . RIGHTC
+   17 CONDITION: CONDITION . AND CONDITION  // assoc %left, prec 2
+   18 CONDITION: CONDITION . OR CONDITION  // assoc %left, prec 1
+
+    AND     shift, and goto state 36
+    OR      shift, and goto state 37
+    RIGHTC  shift, and goto state 35
+
+state 35 // SELECT NAME FROM NAME WHERE LEFTC FLOAT EQ FLOAT RIGHTC
+
+   15 CONDITION: LEFTC CONDITION RIGHTC .  [$end, AND, OR, RIGHTC, SEMICOLON]
+
+    $end       reduce using rule 15 (CONDITION)
+    AND        reduce using rule 15 (CONDITION)
+    OR         reduce using rule 15 (CONDITION)
+    RIGHTC     reduce using rule 15 (CONDITION)
+    SEMICOLON  reduce using rule 15 (CONDITION)
+
+state 36 // SELECT NAME FROM NAME WHERE FLOAT EQ FLOAT AND
+
+   17 CONDITION: CONDITION AND . CONDITION  // assoc %left, prec 2
+
+    FLOAT    shift, and goto state 25
+    INTEGER  shift, and goto state 24
+    LEFTC    shift, and goto state 20
+    NAME     shift, and goto state 22
+    STRING   shift, and goto state 23
+
+    CONDITION      goto state 39
+    CONDITION_VAR  goto state 21
+
+state 37 // SELECT NAME FROM NAME WHERE FLOAT EQ FLOAT OR
+
+   18 CONDITION: CONDITION OR . CONDITION  // assoc %left, prec 1
+
+    FLOAT    shift, and goto state 25
+    INTEGER  shift, and goto state 24
+    LEFTC    shift, and goto state 20
+    NAME     shift, and goto state 22
+    STRING   shift, and goto state 23
+
+    CONDITION      goto state 38
+    CONDITION_VAR  goto state 21
+
+state 38 // SELECT NAME FROM NAME WHERE FLOAT EQ FLOAT OR FLOAT EQ FLOAT [$end]
+
+   17 CONDITION: CONDITION . AND CONDITION  // assoc %left, prec 2
+   18 CONDITION: CONDITION . OR CONDITION  // assoc %left, prec 1
+   18 CONDITION: CONDITION OR CONDITION .  [$end, OR, RIGHTC, SEMICOLON]  // assoc %left, prec 1
+
+    $end       reduce using rule 18 (CONDITION)
+    AND        shift, and goto state 36
+    OR         reduce using rule 18 (CONDITION)
+    RIGHTC     reduce using rule 18 (CONDITION)
+    SEMICOLON  reduce using rule 18 (CONDITION)
+
+state 39 // SELECT NAME FROM NAME WHERE FLOAT EQ FLOAT AND FLOAT EQ FLOAT [$end]
+
+   17 CONDITION: CONDITION . AND CONDITION  // assoc %left, prec 2
+   17 CONDITION: CONDITION AND CONDITION .  [$end, AND, OR, RIGHTC, SEMICOLON]  // assoc %left, prec 2
+   18 CONDITION: CONDITION . OR CONDITION  // assoc %left, prec 1
+
+    $end       reduce using rule 17 (CONDITION)
+    AND        reduce using rule 17 (CONDITION)
+    OR         reduce using rule 17 (CONDITION)
+    RIGHTC     reduce using rule 17 (CONDITION)
+    SEMICOLON  reduce using rule 17 (CONDITION)
+
+state 40 // SELECT NAME FROM NAME SEMICOLON
+
+    2 QUERIES: STATEMENT SEMICOLON .  [$end]
+    3 QUERIES: STATEMENT SEMICOLON . QUERIES
+
+    $end    reduce using rule 2 (QUERIES)
+    SELECT  shift, and goto state 4
+
+    QUERIES           goto state 41
+    SELECT_STATEMENT  goto state 3
+    STATEMENT         goto state 2
+
+state 41 // SELECT NAME FROM NAME SEMICOLON SELECT NAME FROM NAME [$end]
+
+    3 QUERIES: STATEMENT SEMICOLON QUERIES .  [$end]
+
+    $end  reduce using rule 3 (QUERIES)
+
